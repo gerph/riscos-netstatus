@@ -1,0 +1,18 @@
+# RISC OS build artifacts
+oz32/
+oz64/
+rm32/
+rm64/
+aif32/
+aif64/
+
+# Generated headers
+h/modhead
+
+# Build system
+.robuild.yaml
+.rotransform/
+
+# Editor files
+*.swp
+*~
