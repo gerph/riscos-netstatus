@@ -18,6 +18,13 @@
 #define dprintf if (0) printf
 #endif
 
+/* SWI numbers */
+#define SWI_OS_Claim               0x1F
+#define SWI_OS_Release             0x20
+
+/* EconetV vector number */
+#define EconetV_Vector             0x21
+
 /* EconetV reason codes */
 #define NetFS_StartLoad            0x10
 #define NetFS_PartLoad             0x11
@@ -223,9 +230,17 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
+    _kernel_swi_regs regs;
+    
     dprintf("Module NetStatus initialised\n");
     
-    /* The EconetV vector is automatically claimed by CMHG vector-handlers */
+    /* Claim the EconetV vector */
+    regs.r[0] = EconetV_Vector;
+    regs.r[1] = (int)Vector_Entry;
+    regs.r[2] = (int)pw;
+    _kernel_swi(SWI_OS_Claim, &regs, NULL);
+    
+    dprintf("  Claimed EconetV vector at %p\n", (void *)Vector_Entry);
     
     return NULL;
 }
@@ -245,12 +260,20 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
+    _kernel_swi_regs regs;
+    
     dprintf("Module NetStatus dying\n");
+    
+    /* Release the EconetV vector */
+    regs.r[0] = EconetV_Vector;
+    regs.r[1] = (int)Vector_Entry;
+    regs.r[2] = (int)pw;
+    _kernel_swi(SWI_OS_Release, &regs, NULL);
+    
+    dprintf("  Released EconetV vector\n");
     
     /* Turn off the hourglass */
     _kernel_swi(SWI_Hourglass_Off, NULL, NULL);
-    
-    /* The EconetV vector is automatically released by CMHG */
     
     return NULL;
 }

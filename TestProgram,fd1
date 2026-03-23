@@ -60,7 +60,7 @@ WAIT
 
 REM Test Econet_StartReception (top LED)
 PRINT "Test 11: Econet_StartReception"
-SYS "OS_CallAVector", &D0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+SYS "OS_CallAVector", &D0, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
 
 REM Test Econet_FinishReception (LEDs off)
