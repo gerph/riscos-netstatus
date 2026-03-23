@@ -61,6 +61,10 @@
 #define SWI_Hourglass_LEDs         0x406C5
 #define SWI_Hourglass_Colours      0x406C6
 
+/* Global state for tracking transfer progress */
+static int g_total_size = 0;
+static int g_current_offset = 0;
+
 
 /***************************************************************************
  * Function:     Vector_Handler
@@ -75,48 +79,60 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
     int reason = r->r[0];
     int r1 = r->r[1];
     _kernel_swi_regs swi_regs;
-    
+    int percentage;
+
     dprintf("EconetV called with reason &%02X, R1=%d\n", reason, r1);
-    
+
     /* Handle the reason codes */
     switch (reason) {
-        /* Start operations - turn hourglass on */
+        /* Start operations - turn hourglass on and reset offset */
         case NetFS_StartLoad:
         case NetFS_StartSave:
         case NetFS_StartCreate:
         case NetFS_StartGetBytes:
         case NetFS_StartPutBytes:
-            dprintf("  Hourglass_On\n");
+            dprintf("  Hourglass_On (total=%d)\n", r1);
+            g_total_size = r1;
+            g_current_offset = 0;
             swi_regs.r[0] = r1; /* Pass total size */
             _kernel_swi(SWI_Hourglass_On, &swi_regs, NULL);
             break;
-            
-        /* Part operations - update percentage */
+
+        /* Part operations - update offset and report percentage */
         case NetFS_PartLoad:
         case NetFS_PartSave:
         case NetFS_PartCreate:
         case NetFS_PartGetBytes:
         case NetFS_PartPutBytes:
-            dprintf("  Hourglass_Percentage\n");
-            /* R1 contains amount transferred, need to calculate percentage */
-            /* For now, just pass the value through */
-            swi_regs.r[0] = r1;
+            g_current_offset += r1;
+            if (g_total_size > 0) {
+                percentage = (g_current_offset * 100) / g_total_size;
+            } else {
+                percentage = 0;
+            }
+            dprintf("  Hourglass_Percentage (offset=%d, total=%d, %d%%)\n",
+                    g_current_offset, g_total_size, percentage);
+            swi_regs.r[0] = percentage;
             _kernel_swi(SWI_Hourglass_Percentage, &swi_regs, NULL);
             break;
-            
-        /* Finish operations - turn hourglass off */
+
+        /* Finish operations - turn hourglass off and reset state */
         case NetFS_FinishLoad:
         case NetFS_FinishSave:
         case NetFS_FinishCreate:
         case NetFS_FinishGetBytes:
         case NetFS_FinishPutBytes:
             dprintf("  Hourglass_Off\n");
+            g_total_size = 0;
+            g_current_offset = 0;
             _kernel_swi(SWI_Hourglass_Off, &swi_regs, NULL);
             break;
-            
+
         /* Broadcast Load/Save operations */
         case NetFS_StartBroadcastLoad:
-            dprintf("  Hourglass_On (Broadcast Load)\n");
+            dprintf("  Hourglass_On (Broadcast Load, total=%d)\n", r1);
+            g_total_size = r1;
+            g_current_offset = 0;
             swi_regs.r[0] = r1;
             _kernel_swi(SWI_Hourglass_On, &swi_regs, NULL);
             /* Set colours to Green/Blue for Broadcast Load */
@@ -124,20 +140,30 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
             swi_regs.r[1] = 0x000000FF; /* Blue */
             _kernel_swi(SWI_Hourglass_Colours, &swi_regs, NULL);
             break;
-            
+
         case NetFS_PartBroadcastLoad:
-            dprintf("  Hourglass_Percentage (Broadcast Load)\n");
-            swi_regs.r[0] = r1;
+            g_current_offset += r1;
+            if (g_total_size > 0) {
+                percentage = (g_current_offset * 100) / g_total_size;
+            } else {
+                percentage = 0;
+            }
+            dprintf("  Hourglass_Percentage (Broadcast Load, %d%%)\n", percentage);
+            swi_regs.r[0] = percentage;
             _kernel_swi(SWI_Hourglass_Percentage, &swi_regs, NULL);
             break;
-            
+
         case NetFS_FinishBroadcastLoad:
             dprintf("  Hourglass_Off (Broadcast Load)\n");
+            g_total_size = 0;
+            g_current_offset = 0;
             _kernel_swi(SWI_Hourglass_Off, &swi_regs, NULL);
             break;
-            
+
         case NetFS_StartBroadcastSave:
-            dprintf("  Hourglass_On (Broadcast Save)\n");
+            dprintf("  Hourglass_On (Broadcast Save, total=%d)\n", r1);
+            g_total_size = r1;
+            g_current_offset = 0;
             swi_regs.r[0] = r1;
             _kernel_swi(SWI_Hourglass_On, &swi_regs, NULL);
             /* Set colours to Red/Blue for Broadcast Save */
@@ -145,18 +171,26 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
             swi_regs.r[1] = 0x000000FF; /* Blue */
             _kernel_swi(SWI_Hourglass_Colours, &swi_regs, NULL);
             break;
-            
+
         case NetFS_PartBroadcastSave:
-            dprintf("  Hourglass_Percentage (Broadcast Save)\n");
-            swi_regs.r[0] = r1;
+            g_current_offset += r1;
+            if (g_total_size > 0) {
+                percentage = (g_current_offset * 100) / g_total_size;
+            } else {
+                percentage = 0;
+            }
+            dprintf("  Hourglass_Percentage (Broadcast Save, %d%%)\n", percentage);
+            swi_regs.r[0] = percentage;
             _kernel_swi(SWI_Hourglass_Percentage, &swi_regs, NULL);
             break;
-            
+
         case NetFS_FinishBroadcastSave:
             dprintf("  Hourglass_Off (Broadcast Save)\n");
+            g_total_size = 0;
+            g_current_offset = 0;
             _kernel_swi(SWI_Hourglass_Off, &swi_regs, NULL);
             break;
-            
+
         /* Wait operations - LED control */
         case NetFS_StartWait:
             dprintf("  Hourglass_LEDs (Both on - waiting)\n");
@@ -166,7 +200,7 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
             swi_regs.r[1] = -1; /* Preserve all bits */
             _kernel_swi(SWI_Hourglass_LEDs, &swi_regs, NULL);
             break;
-            
+
         case NetFS_FinishWait:
             dprintf("  Hourglass_LEDs (Both off)\n");
             /* To turn both LEDs off: R0=0, R1=0 */
@@ -174,7 +208,7 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
             swi_regs.r[1] = 0;
             _kernel_swi(SWI_Hourglass_LEDs, &swi_regs, NULL);
             break;
-            
+
         /* Transmission/Reception - LED control */
         case Econet_StartTransmission:
             dprintf("  Hourglass_LEDs (Bottom only - transmitting)\n");
@@ -183,14 +217,14 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
             swi_regs.r[1] = -1;
             _kernel_swi(SWI_Hourglass_LEDs, &swi_regs, NULL);
             break;
-            
+
         case Econet_FinishTransmission:
             dprintf("  Hourglass_LEDs (Both off)\n");
             swi_regs.r[0] = 0;
             swi_regs.r[1] = 0;
             _kernel_swi(SWI_Hourglass_LEDs, &swi_regs, NULL);
             break;
-            
+
         case Econet_StartReception:
             dprintf("  Hourglass_LEDs (Top only - receiving)\n");
             /* Top LED = bit 0, so R0=1, R1=-1 */
@@ -198,19 +232,19 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
             swi_regs.r[1] = -1;
             _kernel_swi(SWI_Hourglass_LEDs, &swi_regs, NULL);
             break;
-            
+
         case Econet_FinishReception:
             dprintf("  Hourglass_LEDs (Both off)\n");
             swi_regs.r[0] = 0;
             swi_regs.r[1] = 0;
             _kernel_swi(SWI_Hourglass_LEDs, &swi_regs, NULL);
             break;
-            
+
         default:
             dprintf("  Unknown reason code &%02X\n", reason);
             break;
     }
-    
+
     /* Return 1 to indicate we handled the vector */
     return 1;
 }
@@ -231,17 +265,20 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
 _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
     _kernel_swi_regs regs;
-    
+
     dprintf("Module NetStatus initialised\n");
-    
+
+    /* Initialize global state */
+    g_total_size = 0;
+    g_current_offset = 0;
+
     /* Claim the EconetV vector */
     regs.r[0] = EconetV_Vector;
     regs.r[1] = (int)Vector_Entry;
-    regs.r[2] = (int)pw;
     _kernel_swi(SWI_OS_Claim, &regs, NULL);
-    
+
     dprintf("  Claimed EconetV vector at %p\n", (void *)Vector_Entry);
-    
+
     return NULL;
 }
 
@@ -261,19 +298,22 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
     _kernel_swi_regs regs;
-    
+
     dprintf("Module NetStatus dying\n");
-    
+
     /* Release the EconetV vector */
     regs.r[0] = EconetV_Vector;
     regs.r[1] = (int)Vector_Entry;
-    regs.r[2] = (int)pw;
     _kernel_swi(SWI_OS_Release, &regs, NULL);
-    
+
     dprintf("  Released EconetV vector\n");
-    
+
     /* Turn off the hourglass */
     _kernel_swi(SWI_Hourglass_Off, NULL, NULL);
-    
+
+    /* Clear global state */
+    g_total_size = 0;
+    g_current_offset = 0;
+
     return NULL;
 }
