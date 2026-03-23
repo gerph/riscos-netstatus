@@ -1,5 +1,5 @@
 REM Test program for NetStatus module
-REM This tests the EconetV vector handler
+REM Tests EconetV vector handler with realistic operation sequences
 
 REM EconetV vector number
 EconetV% = &21
@@ -8,64 +8,64 @@ PRINT "NetStatus Module Test Program"
 PRINT "=============================="
 PRINT
 
-REM Test NetFS_StartLoad (hourglass on)
-PRINT "Test 1: NetFS_StartLoad"
+REM Test 1: File Load with percentage updates
+PRINT "Test 1: File Load sequence"
 SYS "OS_CallAVector", &10, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
-
-REM Test NetFS_PartLoad (percentage)
-PRINT "Test 2: NetFS_PartLoad"
+SYS "OS_CallAVector", &11, 250, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
 SYS "OS_CallAVector", &11, 500, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
-
-REM Test NetFS_FinishLoad (hourglass off)
-PRINT "Test 3: NetFS_FinishLoad"
+SYS "OS_CallAVector", &11, 750, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
 SYS "OS_CallAVector", &12, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
 WAIT
 
-REM Test NetFS_StartSave
-PRINT "Test 4: NetFS_StartSave"
+REM Test 2: Broadcast Load (with colours)
+PRINT "Test 2: Broadcast Load sequence"
+SYS "OS_CallAVector", &70, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &71, 500, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &72, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
+
+REM Test 3: Broadcast Wait (LEDs while hourglass is on)
+PRINT "Test 3: Broadcast Wait (during load)"
 SYS "OS_CallAVector", &20, 2000, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
-
-REM Test NetFS_PartSave
-PRINT "Test 5: NetFS_PartSave"
-SYS "OS_CallAVector", &21, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
-WAIT
-
-REM Test NetFS_FinishSave
-PRINT "Test 6: NetFS_FinishSave"
-SYS "OS_CallAVector", &22, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
-WAIT
-
-REM Test NetFS_StartWait (both LEDs on)
-PRINT "Test 7: NetFS_StartWait"
 SYS "OS_CallAVector", &60, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
-
-REM Test NetFS_FinishWait (LEDs off)
-PRINT "Test 8: NetFS_FinishWait"
 SYS "OS_CallAVector", &62, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
+SYS "OS_CallAVector", &22, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
 
-REM Test Econet_StartTransmission (bottom LED)
-PRINT "Test 9: Econet_StartTransmission"
+REM Test 4: Transmission (bottom LED while hourglass is on)
+PRINT "Test 4: Transmission (during save)"
+SYS "OS_CallAVector", &20, 2000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
 SYS "OS_CallAVector", &C0, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
-
-REM Test Econet_FinishTransmission (LEDs off)
-PRINT "Test 10: Econet_FinishTransmission"
 SYS "OS_CallAVector", &C2, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
 WAIT
-
-REM Test Econet_StartReception (top LED)
-PRINT "Test 11: Econet_StartReception"
-SYS "OS_CallAVector", &D0, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+SYS "OS_CallAVector", &22, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
 WAIT
 
-REM Test Econet_FinishReception (LEDs off)
-PRINT "Test 12: Econet_FinishReception"
+REM Test 5: Reception (top LED while hourglass is on)
+PRINT "Test 5: Reception (during load)"
+SYS "OS_CallAVector", &10, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &D0, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
 SYS "OS_CallAVector", &D2, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &12, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
 WAIT
 
 PRINT "=============================="
