@@ -1,0 +1,73 @@
+/*******************************************************************
+ * File:        hourglass
+ * Purpose:     Hourglass module SWI wrappers
+ * Author:      YOUR NAME
+ ******************************************************************/
+
+#include <stdlib.h>
+
+#include "kernel.h"
+#include "swis.h"
+#include "hourglass.h"
+
+
+void hg_on(int total_size)
+{
+    _kernel_swi_regs regs;
+    regs.r[0] = total_size;
+    _kernel_swi(Hourglass_On, &regs, NULL);
+}
+
+
+void hg_off(void)
+{
+    _kernel_swi(Hourglass_Off, NULL, NULL);
+}
+
+
+void hg_percentage(int percentage)
+{
+    _kernel_swi_regs regs;
+    regs.r[0] = percentage;
+    _kernel_swi(Hourglass_Percentage, &regs, NULL);
+}
+
+
+void hg_leds(int leds)
+{
+    _kernel_swi_regs regs;
+    /* Hourglass_LEDs formula: New = (Old AND R1) EOR R0 */
+    /* To set LEDs: R0 = desired state, R1 = -1 (preserve all bits) */
+    /* To clear LEDs: R0 = 0, R1 = 0 */
+    if (leds == HOURGLASS_LED_NONE) {
+        regs.r[0] = 0;
+        regs.r[1] = 0;
+    } else {
+        regs.r[0] = leds;
+        regs.r[1] = -1;
+    }
+    _kernel_swi(Hourglass_LEDs, &regs, NULL);
+}
+
+
+void hg_colours(int colour1, int colour3)
+{
+    _kernel_swi_regs regs;
+    regs.r[0] = colour1;
+    regs.r[1] = colour3;
+    _kernel_swi(Hourglass_Colours, &regs, NULL);
+}
+
+
+void hg_broadcast_load_colours(void)
+{
+    hg_colours(HOURGLASS_BROADCAST_LOAD_COLOUR1,
+               HOURGLASS_BROADCAST_LOAD_COLOUR3);
+}
+
+
+void hg_broadcast_save_colours(void)
+{
+    hg_colours(HOURGLASS_BROADCAST_SAVE_COLOUR1,
+               HOURGLASS_BROADCAST_SAVE_COLOUR3);
+}
