@@ -1,7 +1,7 @@
 /*******************************************************************
  * File:        hourglass
  * Purpose:     Hourglass module interface
- * Author:      YOUR NAME
+ * Author:      Charles Ferguson
  ******************************************************************/
 
 #ifndef _hourglass_h

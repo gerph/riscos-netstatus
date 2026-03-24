@@ -1,7 +1,7 @@
 /*******************************************************************
  * File:        hourglass
  * Purpose:     Hourglass module SWI wrappers
- * Author:      YOUR NAME
+ * Author:      Charles Ferguson
  ******************************************************************/
 
 #include <stdlib.h>

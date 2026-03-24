@@ -1,7 +1,7 @@
 /*******************************************************************
  * File:        module
  * Purpose:     NetStatus module interface
- * Author:      YOUR NAME
+ * Author:      Charles Ferguson
  ******************************************************************/
 
 #include <stdlib.h>
@@ -68,6 +68,8 @@ int Vector_Handler(_kernel_swi_regs *r, void *pw)
     int reason = r->r[0];
     int r1 = r->r[1];
     int percentage;
+
+    (void)pw; /* Unused parameter */
 
     dprintf("EconetV called with reason &%02X, R1=%d\n", reason, r1);
 
@@ -225,6 +227,10 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
     _kernel_swi_regs regs;
 
+    (void)tail;       /* Unused parameters */
+    (void)podule_base;
+    (void)pw;
+
     dprintf("Module NetStatus initialised\n");
 
     /* Initialize global state */
@@ -233,7 +239,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 
     /* Claim the EconetV vector */
     regs.r[0] = EconetV;
-    regs.r[1] = (int)Vector_Entry;
+    regs.r[1] = (int)(void *)Vector_Entry;
     _kernel_swi(OS_Claim, &regs, NULL);
 
     dprintf("  Claimed EconetV vector at %p\n", (void *)Vector_Entry);
@@ -258,11 +264,15 @@ _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
     _kernel_swi_regs regs;
 
+    (void)fatal;      /* Unused parameters */
+    (void)podule_base;
+    (void)pw;
+
     dprintf("Module NetStatus dying\n");
 
     /* Release the EconetV vector */
     regs.r[0] = EconetV;
-    regs.r[1] = (int)Vector_Entry;
+    regs.r[1] = (int)(void *)Vector_Entry;
     _kernel_swi(OS_Release, &regs, NULL);
 
     dprintf("  Released EconetV vector\n");
