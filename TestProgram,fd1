@@ -1,0 +1,73 @@
+REM Test program for NetStatus module
+REM Tests EconetV vector handler with realistic operation sequences
+
+REM EconetV vector number
+EconetV% = &21
+
+PRINT "NetStatus Module Test Program"
+PRINT "=============================="
+PRINT
+
+REM Test 1: File Load with percentage updates
+PRINT "Test 1: File Load sequence"
+SYS "OS_CallAVector", &10, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &11, 250, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &11, 500, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &11, 750, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &12, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
+
+REM Test 2: Broadcast Load (with colours)
+PRINT "Test 2: Broadcast Load sequence"
+SYS "OS_CallAVector", &70, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &71, 500, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &72, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
+
+REM Test 3: Broadcast Wait (LEDs while hourglass is on)
+PRINT "Test 3: Broadcast Wait (during load)"
+SYS "OS_CallAVector", &20, 2000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &60, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &62, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &22, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
+
+REM Test 4: Transmission (bottom LED while hourglass is on)
+PRINT "Test 4: Transmission (during save)"
+SYS "OS_CallAVector", &20, 2000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &C0, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &C2, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &22, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
+
+REM Test 5: Reception (top LED while hourglass is on)
+PRINT "Test 5: Reception (during load)"
+SYS "OS_CallAVector", &10, 1000, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &D0, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &D2, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+WAIT
+SYS "OS_CallAVector", &12, 0, 0, 0, 0, 0, 0, 0, 0, EconetV%
+PRINT
+WAIT
+
+PRINT "=============================="
+PRINT "All tests completed"
+END

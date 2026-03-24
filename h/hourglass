@@ -1,0 +1,84 @@
+/*******************************************************************
+ * File:        hourglass
+ * Purpose:     Hourglass module interface
+ * Author:      Charles Ferguson
+ ******************************************************************/
+
+#ifndef _hourglass_h
+#define _hourglass_h
+
+/* LED bit positions */
+#define HOURGLASS_LED_TOP       0x01
+#define HOURGLASS_LED_BOTTOM    0x02
+#define HOURGLASS_LED_BOTH      0x03
+#define HOURGLASS_LED_NONE      0x00
+
+/* Colour values (format &BBGGRR) */
+#define HOURGLASS_COLOUR_RED    0x0000FF
+#define HOURGLASS_COLOUR_GREEN  0x00FF00
+#define HOURGLASS_COLOUR_BLUE   0xFF0000
+#define HOURGLASS_COLOUR_CYAN   0xFFFF00
+#define HOURGLASS_COLOUR_NONE   0xFFFFFFFF  /* -1 = no change */
+
+/* Broadcast colours */
+#define HOURGLASS_BROADCAST_LOAD_COLOUR1  HOURGLASS_COLOUR_GREEN
+#define HOURGLASS_BROADCAST_LOAD_COLOUR3  HOURGLASS_COLOUR_BLUE
+#define HOURGLASS_BROADCAST_SAVE_COLOUR1  HOURGLASS_COLOUR_RED
+#define HOURGLASS_BROADCAST_SAVE_COLOUR3  HOURGLASS_COLOUR_BLUE
+
+
+/***************************************************************************
+ * Function:     hg_on
+ * Description:  Turn on the hourglass display
+ * Parameters:   total_size = total size of data to transfer
+ **************************************************************************/
+void hg_on(int total_size);
+
+
+/***************************************************************************
+ * Function:     hg_off
+ * Description:  Turn off the hourglass display
+ **************************************************************************/
+void hg_off(void);
+
+
+/***************************************************************************
+ * Function:     hg_percentage
+ * Description:  Display a percentage below the hourglass
+ * Parameters:   percentage = percentage value (0-99), or outside range to turn off
+ **************************************************************************/
+void hg_percentage(int percentage);
+
+
+/***************************************************************************
+ * Function:     hg_leds
+ * Description:  Control the LED indicators above and below the hourglass
+ * Parameters:   leds = LED state (bits 0 and 1 control top and bottom LEDs)
+ **************************************************************************/
+void hg_leds(int leds);
+
+
+/***************************************************************************
+ * Function:     hg_colours
+ * Description:  Set the colours used to display the hourglass
+ * Parameters:   colour1 = colour 1 (&00BBGGRR, or -1 for no change)
+ *               colour3 = colour 3 (&00BBGGRR, or -1 for no change)
+ **************************************************************************/
+void hg_colours(int colour1, int colour3);
+
+
+/***************************************************************************
+ * Function:     hg_broadcast_load_colours
+ * Description:  Set colours for broadcast load (green/blue)
+ **************************************************************************/
+void hg_broadcast_load_colours(void);
+
+
+/***************************************************************************
+ * Function:     hg_broadcast_save_colours
+ * Description:  Set colours for broadcast save (red/blue)
+ **************************************************************************/
+void hg_broadcast_save_colours(void);
+
+
+#endif

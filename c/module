@@ -1,0 +1,288 @@
+/*******************************************************************
+ * File:        module
+ * Purpose:     NetStatus module interface
+ * Author:      Charles Ferguson
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "kernel.h"
+#include "modhead.h"
+#include "swis.h"
+#include "riscos/Vectors.h"
+#include "hourglass.h"
+
+#define DEBUG
+
+#ifdef DEBUG
+#define dprintf if (1) printf
+#else
+#define dprintf if (0) printf
+#endif
+
+/* EconetV reason codes */
+#define NetFS_StartLoad            0x10
+#define NetFS_PartLoad             0x11
+#define NetFS_FinishLoad           0x12
+#define NetFS_StartSave            0x20
+#define NetFS_PartSave             0x21
+#define NetFS_FinishSave           0x22
+#define NetFS_StartCreate          0x30
+#define NetFS_PartCreate           0x31
+#define NetFS_FinishCreate         0x32
+#define NetFS_StartGetBytes        0x40
+#define NetFS_PartGetBytes         0x41
+#define NetFS_FinishGetBytes       0x42
+#define NetFS_StartPutBytes        0x50
+#define NetFS_PartPutBytes         0x51
+#define NetFS_FinishPutBytes       0x52
+#define NetFS_StartWait            0x60
+#define NetFS_FinishWait           0x62
+#define NetFS_StartBroadcastLoad   0x70
+#define NetFS_PartBroadcastLoad    0x71
+#define NetFS_FinishBroadcastLoad  0x72
+#define NetFS_StartBroadcastSave   0x80
+#define NetFS_PartBroadcastSave    0x81
+#define NetFS_FinishBroadcastSave  0x82
+#define Econet_StartTransmission   0xC0
+#define Econet_FinishTransmission  0xC2
+#define Econet_StartReception      0xD0
+#define Econet_FinishReception     0xD2
+
+/* Global state for tracking transfer progress */
+static int g_total_size = 0;
+static int g_current_offset = 0;
+
+
+/***************************************************************************
+ * Function:     Vector_Handler
+ * Description:  Handle the EconetV vector calls
+ * Parameters:   r    = pointer to register block on entry
+ *               pw = private word for module
+ * On exit:      Return VECTOR_CLAIM to claim (return via stack)
+ *               Return VECTOR_PASSON to pass on (return via r14)
+ **************************************************************************/
+int Vector_Handler(_kernel_swi_regs *r, void *pw)
+{
+    int reason = r->r[0];
+    int r1 = r->r[1];
+    int percentage;
+
+    (void)pw; /* Unused parameter */
+
+    dprintf("EconetV called with reason &%02X, R1=%d\n", reason, r1);
+
+    /* Handle the reason codes */
+    switch (reason) {
+        /* Start operations - turn hourglass on and reset offset */
+        case NetFS_StartLoad:
+        case NetFS_StartSave:
+        case NetFS_StartCreate:
+        case NetFS_StartGetBytes:
+        case NetFS_StartPutBytes:
+            dprintf("  Hourglass_On (total=%d)\n", r1);
+            g_total_size = r1;
+            g_current_offset = 0;
+            hg_on(r1);
+            break;
+
+        /* Part operations - update offset and report percentage */
+        case NetFS_PartLoad:
+        case NetFS_PartSave:
+        case NetFS_PartCreate:
+        case NetFS_PartGetBytes:
+        case NetFS_PartPutBytes:
+            g_current_offset += r1;
+            if (g_total_size > 0) {
+                percentage = (g_current_offset * 100) / g_total_size;
+            } else {
+                percentage = 0;
+            }
+            dprintf("  Hourglass_Percentage (offset=%d, total=%d, %d%%)\n",
+                    g_current_offset, g_total_size, percentage);
+            hg_percentage(percentage);
+            break;
+
+        /* Finish operations - turn hourglass off and reset state */
+        case NetFS_FinishLoad:
+        case NetFS_FinishSave:
+        case NetFS_FinishCreate:
+        case NetFS_FinishGetBytes:
+        case NetFS_FinishPutBytes:
+            dprintf("  Hourglass_Off\n");
+            g_total_size = 0;
+            g_current_offset = 0;
+            hg_off();
+            break;
+
+        /* Broadcast Load/Save operations */
+        case NetFS_StartBroadcastLoad:
+            dprintf("  Hourglass_On (Broadcast Load, total=%d)\n", r1);
+            g_total_size = r1;
+            g_current_offset = 0;
+            hg_on(r1);
+            hg_broadcast_load_colours();
+            break;
+
+        case NetFS_PartBroadcastLoad:
+            g_current_offset += r1;
+            if (g_total_size > 0) {
+                percentage = (g_current_offset * 100) / g_total_size;
+            } else {
+                percentage = 0;
+            }
+            dprintf("  Hourglass_Percentage (Broadcast Load, %d%%)\n", percentage);
+            hg_percentage(percentage);
+            break;
+
+        case NetFS_FinishBroadcastLoad:
+            dprintf("  Hourglass_Off (Broadcast Load)\n");
+            g_total_size = 0;
+            g_current_offset = 0;
+            hg_off();
+            break;
+
+        case NetFS_StartBroadcastSave:
+            dprintf("  Hourglass_On (Broadcast Save, total=%d)\n", r1);
+            g_total_size = r1;
+            g_current_offset = 0;
+            hg_on(r1);
+            hg_broadcast_save_colours();
+            break;
+
+        case NetFS_PartBroadcastSave:
+            g_current_offset += r1;
+            if (g_total_size > 0) {
+                percentage = (g_current_offset * 100) / g_total_size;
+            } else {
+                percentage = 0;
+            }
+            dprintf("  Hourglass_Percentage (Broadcast Save, %d%%)\n", percentage);
+            hg_percentage(percentage);
+            break;
+
+        case NetFS_FinishBroadcastSave:
+            dprintf("  Hourglass_Off (Broadcast Save)\n");
+            g_total_size = 0;
+            g_current_offset = 0;
+            hg_off();
+            break;
+
+        /* Wait operations - LED control */
+        case NetFS_StartWait:
+            dprintf("  Hourglass_LEDs (Both on - waiting)\n");
+            hg_leds(HOURGLASS_LED_BOTH);
+            break;
+
+        case NetFS_FinishWait:
+            dprintf("  Hourglass_LEDs (Both off)\n");
+            hg_leds(HOURGLASS_LED_NONE);
+            break;
+
+        /* Transmission/Reception - LED control */
+        case Econet_StartTransmission:
+            dprintf("  Hourglass_LEDs (Bottom only - transmitting)\n");
+            hg_leds(HOURGLASS_LED_BOTTOM);
+            break;
+
+        case Econet_FinishTransmission:
+            dprintf("  Hourglass_LEDs (Both off)\n");
+            hg_leds(HOURGLASS_LED_NONE);
+            break;
+
+        case Econet_StartReception:
+            dprintf("  Hourglass_LEDs (Top only - receiving)\n");
+            hg_leds(HOURGLASS_LED_TOP);
+            break;
+
+        case Econet_FinishReception:
+            dprintf("  Hourglass_LEDs (Both off)\n");
+            hg_leds(HOURGLASS_LED_NONE);
+            break;
+
+        default:
+            dprintf("  Unknown reason code &%02X\n", reason);
+            break;
+    }
+
+    /* Return 1 to indicate we handled the vector */
+    return 1;
+}
+
+
+/***************************************************************************
+ * Function:     Mod_Init
+ * Description:  Initialise the module, setting up vectors, callbacks and
+ *               any other parts of the system necessary for the module to
+ *               function.
+ * Parameters:   tail        = pointer to command line (control terminated)
+ *               podule_base = address of podule module was started from, or
+ *                             NULL if none
+ *               pw          = private word for module
+ * On exit:      Return NULL for successful initialisation, or a pointer to
+ *               an error block if the module could not start properly.
+ **************************************************************************/
+_kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
+{
+    _kernel_swi_regs regs;
+
+    (void)tail;       /* Unused parameters */
+    (void)podule_base;
+    (void)pw;
+
+    dprintf("Module NetStatus initialised\n");
+
+    /* Initialize global state */
+    g_total_size = 0;
+    g_current_offset = 0;
+
+    /* Claim the EconetV vector */
+    regs.r[0] = EconetV;
+    regs.r[1] = (int)(void *)Vector_Entry;
+    _kernel_swi(OS_Claim, &regs, NULL);
+
+    dprintf("  Claimed EconetV vector at %p\n", (void *)Vector_Entry);
+
+    return NULL;
+}
+
+
+/***************************************************************************
+ * Function:     Mod_Final
+ * Description:  Finalise the module, shutting down any systems necessary,
+ *               freeing vectors and releasing workspace
+ * Parameters:   fatal       = fatality indicator; 1 if fatal, 0 if
+ *                             reinitialising
+ *               podule_base = address of podule module was started from, or
+ *                             NULL if none
+ *               pw          = private word for module
+ * On exit:      Return 0 for successful finalisation, or a pointer to an
+ *               error block if module was not shutdown properly.
+ **************************************************************************/
+_kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
+{
+    _kernel_swi_regs regs;
+
+    (void)fatal;      /* Unused parameters */
+    (void)podule_base;
+    (void)pw;
+
+    dprintf("Module NetStatus dying\n");
+
+    /* Release the EconetV vector */
+    regs.r[0] = EconetV;
+    regs.r[1] = (int)(void *)Vector_Entry;
+    _kernel_swi(OS_Release, &regs, NULL);
+
+    dprintf("  Released EconetV vector\n");
+
+    /* Turn off the hourglass */
+    hg_off();
+
+    /* Clear global state */
+    g_total_size = 0;
+    g_current_offset = 0;
+
+    return NULL;
+}
