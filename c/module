@@ -240,6 +240,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
     /* Claim the EconetV vector */
     regs.r[0] = EconetV;
     regs.r[1] = (int)(void *)Vector_Entry;
+    regs.r[2] = (int)pw;
     _kernel_swi(OS_Claim, &regs, NULL);
 
     dprintf("  Claimed EconetV vector at %p\n", (void *)Vector_Entry);
@@ -273,6 +274,7 @@ _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
     /* Release the EconetV vector */
     regs.r[0] = EconetV;
     regs.r[1] = (int)(void *)Vector_Entry;
+    regs.r[2] = (int)pw;
     _kernel_swi(OS_Release, &regs, NULL);
 
     dprintf("  Released EconetV vector\n");
